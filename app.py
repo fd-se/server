@@ -4,6 +4,7 @@ import os
 import time
 import sys
 from io import BytesIO
+import importlib #for Python 3x
 
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -17,7 +18,7 @@ from ext import redis0, redis2
 
 default_encoding = 'utf-8'
 if sys.getdefaultencoding() != default_encoding:
-    reload(sys)
+    importlib.reload(sys)
     sys.setdefaultencoding(default_encoding)
 
 app = Flask(__name__)
@@ -27,6 +28,18 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 
 db = SQLAlchemy(app)
+
+class Like(db.Model):
+
+    __tablename__ = 'like'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(32))
+    video = db.Column(db.String(256))
+
+    def __init__(self, name, video_):
+        self.username = name
+        self.video = video_
 
 
 class User(db.Model):
@@ -74,6 +87,8 @@ class Video(db.Model):
 #         g.user = redis0.get(token)
 #         return True
 #     return False
+
+
 
 
 @app.route('/login', methods=['POST'])
@@ -128,6 +143,37 @@ def login_token():
         'content': None,
         'bitmap': None
     })
+
+
+@app.route('/mod_like', methods=['POST'])
+def mod_like():
+    token = hashlib.md5(request.form['token']).hexdigest()
+    if not redis0.exists(token):
+        return jsonify({
+            'sucess':False,
+            'content':'Could not find user!',
+            'like':None
+        })
+    video_ = request.form['video']
+    username = redis0.get(token)
+
+    like = Like.query.filter_by(username=username, video=video_).first()
+    if not like:
+        like = Like(username, video_)
+        db.session.add(like)
+        db.session.commit()
+        return jsonify({
+            'sucess':True,
+            'content':None,
+            'like':True
+        })
+    db.session.delete(like)
+    return jsonify({
+        'sucess':True,
+        'content':None,
+        'like': False
+    })
+
 
 
 @app.route('/register', methods=['POST'])
@@ -191,6 +237,8 @@ def change():
         })
 
 
+
+
 @app.route('/upload', methods=['POST'])
 def upload():
     if request.method == 'POST':
@@ -235,6 +283,7 @@ def videoname(mtoken):
     if not Video.query.filter_by(id=1).first():
         return jsonify({
             'content': None,
+            'like':None,
             'success': False
         })
     token = hashlib.md5(mtoken).hexdigest()
@@ -242,23 +291,39 @@ def videoname(mtoken):
     if redis2.exists(username):
         num = redis2.get(username)
         redis2.incr(username)
-        print redis2.get(username)
+        print(redis2.get(username))
         redis2.expire(username, 2592000)
         video_ = Video.query.filter_by(id=num).first()
         if not video_:
             redis2.set(username, 2)
             video_ = Video.query.filter_by(id=1).first()
-        print video_.video
+        print(video_.video)
+        like = Like.query.filter_by(username=username, video=video_.video).first()
+        if not like:
+            return jsonify({
+                'content': video_.video,
+                'like':False,
+                'success': True
+            })
         return jsonify({
-            'content': video_.video,
-            'success': True
+            'content':video_.video,
+            'like':True,
+            'sucess':True
         })
     redis2.set(username, 2)
     redis2.expire(username, 2592000)
     video_ = Video.query.filter_by(id=1).first()
+    like = Like.query.filter_by(username=username, video=video_.video).first()
+    if not like:
+        return jsonify({
+            'content': video_.video,
+            'like': False,
+            'success': True
+        })
     return jsonify({
         'content': video_.video,
-        'success': True
+        'like': True,
+        'sucess': True
     })
 
 
@@ -294,4 +359,12 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run('0.0.0.0', 80)
+    '''
+'0.0.0.0':make the server available for external user
+80: port
+5000: for test
+    '''
+    app.run('0.0.0.0', 5000)
+
+
+

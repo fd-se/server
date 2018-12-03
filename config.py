@@ -7,8 +7,9 @@ if sys.getdefaultencoding() != default_encoding:
     sys.setdefaultencoding(default_encoding)
 
 USER = 'root'
-PASSWORD = '123456'
+PASSWORD = ''
 URL = 'localhost'
+# URL = '192.168.3.45'
 PORT = '3306'
-DATABASE = 'project'
+DATABASE = 'android'
 UPLOAD_PATH = 'users'

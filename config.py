@@ -6,10 +6,10 @@ if sys.getdefaultencoding() != default_encoding:
     reload(sys)
     sys.setdefaultencoding(default_encoding)
 
-USER = 'dangerousor'
-PASSWORD = '123456'
-# URL = 'localhost'
-URL = '192.168.3.45'
+USER = 'root'
+PASSWORD = ''
+URL = 'localhost'
+# URL = '192.168.3.45'
 PORT = '3306'
 DATABASE = 'android'
 UPLOAD_PATH = 'users'

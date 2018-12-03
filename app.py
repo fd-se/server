@@ -13,7 +13,7 @@ from sqlalchemy.dialects.mysql import LONGTEXT
 import hashlib
 
 from config import USER, PASSWORD, URL, PORT, DATABASE
-from ext import redis0, redis1, redis2
+from ext import redis0, redis2
 
 default_encoding = 'utf-8'
 if sys.getdefaultencoding() != default_encoding:

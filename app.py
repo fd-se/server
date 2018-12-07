@@ -4,7 +4,7 @@ import os
 import time
 import sys
 from io import BytesIO
-import importlib #for Python 3x
+#import importlib #for Python 3x
 
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -16,13 +16,18 @@ import hashlib
 from config import USER, PASSWORD, URL, PORT, DATABASE
 from ext import redis0, redis2
 
+##import pymysql# for Python 3x
+##pymysql.install_as_MySQLdb()# for Python 3x
+
 default_encoding = 'utf-8'
 if sys.getdefaultencoding() != default_encoding:
-    importlib.reload(sys)
+##    importlib.reload(sys) #for Python 3x
+    reload(sys)
     sys.setdefaultencoding(default_encoding)
 
 app = Flask(__name__)
 
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://{}:{}@{}:{}/{}'.format(USER, PASSWORD, URL, PORT, DATABASE) # for Python 3x
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://{}:{}@{}:{}/{}'.format(USER, PASSWORD, URL, PORT, DATABASE)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
@@ -150,11 +155,11 @@ def mod_like():
     token = hashlib.md5(request.form['token']).hexdigest()
     if not redis0.exists(token):
         return jsonify({
-            'sucess':False,
+            'success':False,
             'content':'Could not find user!',
             'like':None
         })
-    video_ = request.form['video']
+    video_ = request.form['filename']
     username = redis0.get(token)
 
     like = Like.query.filter_by(username=username, video=video_).first()
@@ -163,13 +168,14 @@ def mod_like():
         db.session.add(like)
         db.session.commit()
         return jsonify({
-            'sucess':True,
+            'success':True,
             'content':None,
             'like':True
         })
     db.session.delete(like)
+    db.session.commit()
     return jsonify({
-        'sucess':True,
+        'success':True,
         'content':None,
         'like': False
     })
@@ -283,8 +289,8 @@ def videoname(mtoken):
     if not Video.query.filter_by(id=1).first():
         return jsonify({
             'content': None,
-            'like':None,
-            'success': False
+            'success': False,
+            'like': None
         })
     token = hashlib.md5(mtoken).hexdigest()
     username = redis0.get(token)
@@ -308,7 +314,7 @@ def videoname(mtoken):
         return jsonify({
             'content':video_.video,
             'like':True,
-            'sucess':True
+            'success':True
         })
     redis2.set(username, 2)
     redis2.expire(username, 2592000)
@@ -323,7 +329,7 @@ def videoname(mtoken):
     return jsonify({
         'content': video_.video,
         'like': True,
-        'sucess': True
+        'success': True
     })
 
 

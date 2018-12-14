@@ -14,6 +14,7 @@ CREATE TABLE `video` (
   `username` varchar(32) DEFAULT NULL,
   `video` varchar(256) DEFAULT NULL,
   `title` text,
+  'topic' varchar(128),
   `location` text,
   `time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)

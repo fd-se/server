@@ -8,7 +8,7 @@ from io import BytesIO
 
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import TEXT, DATETIME
+from sqlalchemy import TEXT, DATETIME, and_, BOOLEAN
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 import hashlib
@@ -40,11 +40,11 @@ class Like(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(32))
-    video = db.Column(db.String(256))
+    videoid = db.Column(db.Integer)
 
-    def __init__(self, name, video_):
+    def __init__(self, name, videoid):
         self.username = name
-        self.video = video_
+        self.videoid = videoid
 
 
 class User(db.Model):
@@ -74,14 +74,18 @@ class Video(db.Model):
     username = db.Column(db.String(32))
     video = db.Column(db.String(256), unique=True, index=True)
     title = db.Column(TEXT)
+    topic = db.Column(db.String(128))
     location = db.Column(TEXT)
+    deleted = db.Column(BOOLEAN)
     time = db.Column(DATETIME)
 
-    def __init__(self, username, video_, title, location, time_):
+    def __init__(self, username, video_, title, topic, location, deleted, time_):
         self.username = username
         self.video = video_
         self.title = title
+        self.topic = topic
         self.location = location
+        self.deleted = deleted
         self.time = time_
 
 
@@ -160,16 +164,16 @@ def mod_like():
             'like':None,
             'count':None
         })
-    video_ = request.form['filename']
+    videoid_ = request.form['videoid']
     username = redis0.get(token)
 
-    like = Like.query.filter_by(username=username, video=video_).first()
+    like = Like.query.filter_by(username=username, videoid=videoid_).first()
 
     if not like:
-        like = Like(username, video_)
+        like = Like(username, videoid_)
         db.session.add(like)
         db.session.commit()
-        count = Like.query.filter_by(video=video_).count()
+        count = Like.query.filter_by(videoid=videoid_).count()
         return jsonify({
             'success':True,
             'content':None,
@@ -178,7 +182,7 @@ def mod_like():
         })
     db.session.delete(like)
     db.session.commit()
-    count = Like.query.filter_by(video=video_).count()
+    count = Like.query.filter_by(videoid=videoid_).count()
     return jsonify({
         'success':True,
         'content':None,
@@ -255,6 +259,7 @@ def change():
 def upload():
     if request.method == 'POST':
         # check if the post request has the file part
+        print request.files
         if 'file' not in request.files:
             return jsonify({'success': False, 'content': 'No file part'})
         file_ = request.files['file']
@@ -268,6 +273,8 @@ def upload():
                     os.makedirs(file_dir)
                 temp = file_.filename.split('+title+')
                 title = temp[0]
+                temp = temp[1].split('+topic+')
+                topic = temp[0]
                 temp = temp[1].split('+location+')
                 location = temp[0]
                 temp = temp[1].split('+token+')
@@ -280,7 +287,7 @@ def upload():
 
                 file_.save(save_path)
                 username = redis0.get(token)
-                video_ = Video(username, h_path, title, location, now_time)
+                video_ = Video(username, h_path, title, topic, location, False, now_time)
                 db.session.add(video_)
                 db.session.commit()
                 return jsonify({'success': True, 'content': ''})
@@ -298,62 +305,83 @@ def videoname(mtoken):
             'success': False,
             'like': None,
             'count':None
+            'videoid': None,
         })
+    topic = request.args.get('topic')
+    print topic
     token = hashlib.md5(mtoken).hexdigest()
     username = redis0.get(token)
     if redis2.exists(username):
         num = redis2.get(username)
-        redis2.incr(username)
-        print(redis2.get(username))
-        redis2.expire(username, 2592000)
-        video_ = Video.query.filter_by(id=num).first()
+        print redis2.get(username)
+        if topic:
+            video_ = Video.query.filter(and_(Video.id > num, Video.topic == topic, Video.deleted == False)).limit(1).first()
+        else:
+            video_ = Video.query.filter(and_(Video.id > num, Video.deleted == False)).limit(1).first()
         if not video_:
-            redis2.set(username, 2)
-            video_ = Video.query.filter_by(id=1).first()
-        print(video_.video)
-        like = Like.query.filter_by(username=username, video=video_.video).first()
-        count = Like.query.filter_by(video=video_.video).count()
+            if topic:
+                video_ = Video.query.filter(and_(Video.id > 0, Video.topic == topic, Video.deleted == False)).limit(1).first()
+            else:
+                video_ = Video.query.filter(and_(Video.id > 0, Video.deleted == False)).limit(1).first()
+        like = Like.query.filter_by(username=username, videoid=video_.id).first()
+        count = Like.query.filter_by(videoid=video_.id).count()
+        if not video_:
+            return jsonify({
+                'content': None,
+                'videoid': None,
+                'like':False,
+                'count':None,
+                'success': False,
+            })
+        redis2.set(username, video_.id)
+        redis2.expire(username, 2592000)
+        print video_.video
         if not like:
             return jsonify({
                 'content': video_.video,
                 'like':False,
                 'success': True,
-                'count':count
+                'count':count,
+                'videoid': video_.id,
             })
         return jsonify({
-            'content':video_.video,
-            'like':True,
-            'success':True,
-            'count':count
+            'content': video_.video,
+            'videoid': video_.id,
+            'success': True,
+            'like': True,
+            'count': count,
         })
-    redis2.set(username, 2)
+    redis2.set(username, 1)
     redis2.expire(username, 2592000)
     video_ = Video.query.filter_by(id=1).first()
-    like = Like.query.filter_by(username=username, video=video_.video).first()
-    count = Like.query.filter_by(video=video_.video).count()
+    like = Like.query.filter_by(username=username, videoid=video_.id).first()
+    count = Like.query.filter_by(videoid=video_.id).count()
     if not like:
         return jsonify({
             'content': video_.video,
             'like': False,
             'success': True,
-            'count':count
+            'count':count,
+            'videoid': video_.id,
         })
     return jsonify({
         'content': video_.video,
         'like': True,
         'success': True,
-        'count':count
+        'count':count,
+        'videoid': video_.id,
     })
 
 
-@app.route('/videodetail/<filename>', methods=['GET'])
-def videodetail(filename):
-    video_ = Video.query.filter_by(video=filename).first()
+@app.route('/videodetail/<videoid>', methods=['GET'])
+def videodetail(videoid):
+    video_ = Video.query.filter_by(id=videoid).first()
     user = User.query.filter_by(username=video_.username).first()
     return jsonify({
         'pic': user.bitmap,
         'author': user.nickname,
         'title': video_.title,
+        'topic': video_.topic,
         'place': video_.location
     })
 
@@ -372,18 +400,28 @@ def video(filename):
     return Response(generate(), mimetype="application/octet-stream")
 
 
+@app.route('/delete', methods=['POST'])
+def delete():
+    if request.method == 'POST':
+        try:
+            videoid = request.form['videoid']
+            video_ = Video.query.filter_by(id=videoid).first()
+            video_.deleted = True
+            db.session.commit()
+            return jsonify({
+                'success': True,
+            })
+        except Exception as e:
+            print(e)
+            return jsonify({
+                'success': False,
+            })
+
+
 @app.route('/')
 def index():
     return "Hello Android Web"
 
 
 if __name__ == '__main__':
-    '''
-'0.0.0.0':make the server available for external user
-80: port
-5000: for test
-    '''
-    app.run('0.0.0.0', 5000)
-
-
-
+    app.run('0.0.0.0', 80, debug=True)

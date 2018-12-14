@@ -4,9 +4,9 @@ DROP TABLE IF EXISTS `like`;
 CREATE TABLE `like`(
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(32) DEFAULT NULL,
-  `video` varchar(256) DEFAULT NULL
+  `videoid` int(11),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 DROP TABLE IF EXISTS  `video`;
 CREATE TABLE `video` (
@@ -14,8 +14,9 @@ CREATE TABLE `video` (
   `username` varchar(32) DEFAULT NULL,
   `video` varchar(256) DEFAULT NULL,
   `title` text,
-  'topic' varchar(128),
+  `topic` varchar(128),
   `location` text,
+  `deleted` tinyint(1),
   `time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;

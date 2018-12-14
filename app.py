@@ -253,8 +253,6 @@ def change():
         })
 
 
-
-
 @app.route('/upload', methods=['POST'])
 def upload():
     if request.method == 'POST':
@@ -308,7 +306,6 @@ def videoname(mtoken):
             'videoid': None,
         })
     topic = request.args.get('topic')
-    print topic
     token = hashlib.md5(mtoken).hexdigest()
     username = redis0.get(token)
     if redis2.exists(username):

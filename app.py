@@ -157,27 +157,33 @@ def mod_like():
         return jsonify({
             'success':False,
             'content':'Could not find user!',
-            'like':None
+            'like':None,
+            'count':None
         })
     video_ = request.form['filename']
     username = redis0.get(token)
 
     like = Like.query.filter_by(username=username, video=video_).first()
+
     if not like:
         like = Like(username, video_)
         db.session.add(like)
         db.session.commit()
+        count = Like.query.filter_by(video=video_).count()
         return jsonify({
             'success':True,
             'content':None,
-            'like':True
+            'like':False,
+            'count':count
         })
     db.session.delete(like)
     db.session.commit()
+    count = Like.query.filter_by(video=video_).count()
     return jsonify({
         'success':True,
         'content':None,
-        'like': False
+        'like': True,
+        'count':count
     })
 
 
@@ -290,7 +296,8 @@ def videoname(mtoken):
         return jsonify({
             'content': None,
             'success': False,
-            'like': None
+            'like': None,
+            'count':None
         })
     token = hashlib.md5(mtoken).hexdigest()
     username = redis0.get(token)
@@ -305,31 +312,37 @@ def videoname(mtoken):
             video_ = Video.query.filter_by(id=1).first()
         print(video_.video)
         like = Like.query.filter_by(username=username, video=video_.video).first()
+        count = Like.query.filter_by(video=video_.video).count()
         if not like:
             return jsonify({
                 'content': video_.video,
                 'like':False,
-                'success': True
+                'success': True,
+                'count':count
             })
         return jsonify({
             'content':video_.video,
             'like':True,
-            'success':True
+            'success':True,
+            'count':count
         })
     redis2.set(username, 2)
     redis2.expire(username, 2592000)
     video_ = Video.query.filter_by(id=1).first()
     like = Like.query.filter_by(username=username, video=video_.video).first()
+    count = Like.query.filter_by(video=video_.video).count()
     if not like:
         return jsonify({
             'content': video_.video,
             'like': False,
-            'success': True
+            'success': True,
+            'count':count
         })
     return jsonify({
         'content': video_.video,
         'like': True,
-        'success': True
+        'success': True,
+        'count':count
     })
 
 

@@ -2,8 +2,11 @@
 # -*- coding:utf-8 -*-
 import redis
 import sys
+# import importlib #for Python 3x
+
 default_encoding = 'utf-8'
 if sys.getdefaultencoding() != default_encoding:
+    #importlib.reload(sys) #for Python 3x
     reload(sys)
     sys.setdefaultencoding(default_encoding)
 

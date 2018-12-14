@@ -1,5 +1,13 @@
 ﻿SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS `like`;
+CREATE TABLE `like`(
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(32) DEFAULT NULL,
+  `video` varchar(256) DEFAULT NULL
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+
 DROP TABLE IF EXISTS  `video`;
 CREATE TABLE `video` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
